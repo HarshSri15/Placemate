@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Link, useNavigate } from 'react-router-dom';
 import { Target, ArrowLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/services/api'; // ✅ ADDED
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -18,16 +19,26 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate login - in production, this would call your auth API
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    toast({
-      title: 'Welcome back!',
-      description: 'Redirecting to your dashboard...',
-    });
-    
-    setIsLoading(false);
-    navigate('/dashboard');
+    try {
+      // ✅ FIXED: Actually call the API
+      const { user } = await api.login({ email, password });
+      
+      toast({
+        title: 'Welcome back!',
+        description: `Signed in as ${user.name}`,
+      });
+      
+      navigate('/dashboard');
+    } catch (error: any) {
+      // ✅ ADDED: Handle errors
+      toast({
+        title: 'Login failed',
+        description: error.message || 'Invalid email or password',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

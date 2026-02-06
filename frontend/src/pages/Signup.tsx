@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Link, useNavigate } from 'react-router-dom';
 import { Target, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/services/api'; // ✅ ADDED
 
 export default function Signup() {
   const [name, setName] = useState('');
@@ -20,16 +21,31 @@ export default function Signup() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate signup - in production, this would call your auth API
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    toast({
-      title: 'Account created!',
-      description: 'Welcome to PlaceMate. Let\'s start tracking!',
-    });
-    
-    setIsLoading(false);
-    navigate('/dashboard');
+    try {
+      // ✅ FIXED: Actually call the API
+      const { user } = await api.signup({ 
+        name, 
+        email, 
+        password, 
+        college: college || undefined 
+      });
+      
+      toast({
+        title: 'Account created!',
+        description: `Welcome ${user.name}! Let's start tracking.`,
+      });
+      
+      navigate('/dashboard');
+    } catch (error: any) {
+      // ✅ ADDED: Handle errors
+      toast({
+        title: 'Signup failed',
+        description: error.message || 'Could not create account',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const passwordRequirements = [

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useApplicationStore } from '@/stores/applicationStore';
 import { StatsCard } from '@/components/ui/stats-card';
 import { ApplicationCard } from '@/components/ApplicationCard';
@@ -18,11 +19,22 @@ import {
 } from 'lucide-react';
 import { format, isAfter, isBefore, addDays } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { STAGE_CONFIG } from '@/types/application';
+import { STAGE_CONFIG, DashboardStats } from '@/types/application';
 
 export default function Dashboard() {
   const { applications, getDashboardStats } = useApplicationStore();
-  const stats = getDashboardStats();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalApplications: 0,
+    activeApplications: 0,
+    interviewsScheduled: 0,
+    offersReceived: 0,
+    rejections: 0,
+    responseRate: 0,
+  });
+
+  useEffect(() => {
+    getDashboardStats().then(setStats);
+  }, [getDashboardStats]);
 
   // Get upcoming interviews (next 7 days)
   const upcomingInterviews = applications

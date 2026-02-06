@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // ✅ Added useEffect
 import { useApplicationStore } from '@/stores/applicationStore';
 import { ApplicationCard } from '@/components/ApplicationCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -18,10 +18,15 @@ import { ApplicationStage, STAGE_CONFIG } from '@/types/application';
 import { cn } from '@/lib/utils';
 
 export default function Applications() {
-  const { applications, deleteApplication } = useApplicationStore();
+  const { applications, fetchApplications, deleteApplication, isLoading } = useApplicationStore(); // ✅ Added fetchApplications, isLoading
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+
+  // ✅ ADD THIS - Fetch applications when component mounts
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
 
   const filteredApplications = applications.filter((app) => {
     const matchesSearch = 
@@ -37,6 +42,18 @@ export default function Applications() {
     acc[stage] = applications.filter((app) => app.stage === stage).length;
     return acc;
   }, {} as Record<string, number>);
+
+  // ✅ ADD THIS - Show loading state
+  if (isLoading && applications.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">

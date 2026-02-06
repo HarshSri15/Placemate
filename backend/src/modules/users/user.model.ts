@@ -96,20 +96,17 @@ const userSchema = new Schema<IUser>(
   {
     timestamps: true,
     toJSON: {
-      transform: (doc, ret) => {
+      transform: (_doc, ret) => {
         ret.id = ret._id.toString();
-        delete ret._id;
-        delete ret.__v;
-        delete ret.password;
-        delete ret.refreshTokens;
+        delete (ret as any)._id;
+        delete (ret as any).__v;
+        delete (ret as any).password;
+        delete (ret as any).refreshTokens;
         return ret;
       },
     },
   }
 );
-
-// Index for faster queries
-userSchema.index({ email: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

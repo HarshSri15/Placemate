@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // ✅ Added useEffect
 import { useApplicationStore } from '@/stores/applicationStore';
 import { ApplicationCard } from '@/components/ApplicationCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,9 +13,14 @@ import { cn } from '@/lib/utils';
 const stages: ApplicationStage[] = ['applied', 'oa', 'tech', 'hr', 'offer', 'rejected'];
 
 export default function Pipeline() {
-  const { applications, updateStage } = useApplicationStore();
+  const { applications, fetchApplications, updateStage, isLoading } = useApplicationStore(); // ✅ Added fetchApplications, isLoading
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<ApplicationStage | null>(null);
+
+  // ✅ ADD THIS - Fetch applications when component mounts
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
 
   const getApplicationsByStage = (stage: ApplicationStage) => {
     return applications.filter((app) => app.stage === stage);
@@ -49,6 +54,18 @@ export default function Pipeline() {
     setDraggingId(null);
     setDragOverStage(null);
   };
+
+  // ✅ ADD THIS - Show loading state
+  if (isLoading && applications.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading pipeline...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-16 md:pb-0">

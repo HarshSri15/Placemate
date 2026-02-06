@@ -248,13 +248,14 @@ export default function ApplicationForm() {
             {/* Source & URL */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="source">Application Source</Label>
+                <Label htmlFor="source">Application Source *</Label>
                 <Input
                   id="source"
                   placeholder="LinkedIn, Referral, Career Fair, etc."
                   value={formData.source}
                   onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                />
+                 required
+                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="jobUrl">Job URL (Optional)</Label>
