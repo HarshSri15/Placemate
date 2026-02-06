@@ -50,32 +50,38 @@ export default function ApplicationForm() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      if (isEditing && existingApp) {
+        await updateApplication(existingApp.id, {
+          ...formData,
+          status: formData.stage === 'offer' || formData.stage === 'rejected' ? 'completed' : 'active',
+        });
+        toast({
+          title: 'Application updated',
+          description: `${formData.companyName} application has been updated.`,
+        });
+      } else {
+        await addApplication({
+          ...formData,
+          status: formData.stage === 'offer' || formData.stage === 'rejected' ? 'completed' : 'active',
+          contacts: [],
+        });
+        toast({
+          title: 'Application added',
+          description: `${formData.companyName} has been added to your pipeline.`,
+        });
+      }
 
-    if (isEditing && existingApp) {
-      updateApplication(existingApp.id, {
-        ...formData,
-        status: formData.stage === 'offer' || formData.stage === 'rejected' ? 'completed' : 'active',
-      });
+      setIsLoading(false);
+      navigate('/applications');
+    } catch (error) {
+      setIsLoading(false);
       toast({
-        title: 'Application updated',
-        description: `${formData.companyName} application has been updated.`,
-      });
-    } else {
-      addApplication({
-        ...formData,
-        status: formData.stage === 'offer' || formData.stage === 'rejected' ? 'completed' : 'active',
-        contacts: [],
-      });
-      toast({
-        title: 'Application added',
-        description: `${formData.companyName} has been added to your pipeline.`,
+        title: 'Error',
+        description: 'Failed to save application. Please try again.',
+        variant: 'destructive',
       });
     }
-
-    setIsLoading(false);
-    navigate('/applications');
   };
 
   return (
@@ -254,8 +260,7 @@ export default function ApplicationForm() {
                   placeholder="LinkedIn, Referral, Career Fair, etc."
                   value={formData.source}
                   onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                 required
-                 />
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="jobUrl">Job URL (Optional)</Label>
