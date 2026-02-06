@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,37 +28,92 @@ import {
   Calendar
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/services/api';
 
 export default function Settings() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingUser, setIsFetchingUser] = useState(true);
 
   // Profile state
   const [profile, setProfile] = useState({
-    name: 'John Doe',
-    email: 'john@college.edu',
-    college: 'IIT Delhi',
-    graduationYear: '2025',
+    name: '',
+    email: '',
+    college: '',
+    graduationYear: '',
   });
 
   // Preferences state
   const [preferences, setPreferences] = useState({
-    theme: 'system',
+    theme: 'system' as 'light' | 'dark' | 'system',
     emailReminders: true,
-    pushNotifications: false,
     reminderDays: '3',
-    weeklyDigest: true,
-    defaultView: 'dashboard',
+    defaultView: 'dashboard' as 'dashboard' | 'pipeline',
   });
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setIsFetchingUser(true);
+        const user = await api.getCurrentUser();
+        setProfile({
+          name: user.name,
+          email: user.email,
+          college: user.college || '',
+          graduationYear: user.graduationYear?.toString() || '',
+        });
+        setPreferences({
+          theme: user.preferences.theme,
+          emailReminders: user.preferences.emailReminders,
+          reminderDays: user.preferences.reminderDaysBefore?.toString() || '3',
+          defaultView: user.preferences.defaultView,
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to load profile. Please try again.',
+          variant: 'destructive',
+        });
+        console.error('Failed to fetch user data:', error);
+      } finally {
+        setIsFetchingUser(false);
+      }
+    };
+
+    fetchUserData();
+  }, [toast]);
 
   const handleSave = async () => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    toast({
-      title: 'Settings saved',
-      description: 'Your preferences have been updated.',
-    });
+    try {
+      await Promise.all([
+        api.updateUserProfile({
+          name: profile.name,
+          college: profile.college || undefined,
+          graduationYear: profile.graduationYear ? parseInt(profile.graduationYear) : undefined,
+        }),
+        api.updateUserPreferences({
+          theme: preferences.theme,
+          emailReminders: preferences.emailReminders,
+          reminderDaysBefore: parseInt(preferences.reminderDays),
+          defaultView: preferences.defaultView,
+        }),
+      ]);
+      setIsLoading(false);
+      toast({
+        title: 'Settings saved',
+        description: 'Your preferences have been updated.',
+      });
+    } catch (error) {
+      setIsLoading(false);
+      toast({
+        title: 'Error',
+        description: 'Failed to save settings. Please try again.',
+        variant: 'destructive',
+      });
+      console.error('Failed to save settings:', error);
+    }
   };
 
   return (
@@ -69,7 +124,16 @@ export default function Settings() {
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      {isFetchingUser ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your settings...</p>
+          </div>
+        </div>
+      ) : (
+        <>
+        <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="profile" className="gap-2">
             <User className="w-4 h-4 hidden sm:block" />
@@ -213,21 +277,6 @@ export default function Settings() {
               <Separator />
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Weekly Digest</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Summary of your application activity
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.weeklyDigest}
-                  onCheckedChange={(checked) => 
-                    setPreferences({ ...preferences, weeklyDigest: checked })
-                  }
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
                   <Label>Reminder Timing</Label>
                   <p className="text-sm text-muted-foreground">
                     Days before interview to send reminder
@@ -252,29 +301,6 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Push Notifications</CardTitle>
-              <CardDescription>Browser notifications settings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Enable Push Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive real-time updates in your browser
-                  </p>
-                </div>
-                <Switch
-                  checked={preferences.pushNotifications}
-                  onCheckedChange={(checked) => 
-                    setPreferences({ ...preferences, pushNotifications: checked })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Appearance Tab */}
@@ -287,9 +313,9 @@ export default function Settings() {
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { value: 'light', label: 'Light' },
-                  { value: 'dark', label: 'Dark' },
-                  { value: 'system', label: 'System' },
+                  { value: 'light' as const, label: 'Light' },
+                  { value: 'dark' as const, label: 'Dark' },
+                  { value: 'system' as const, label: 'System' },
                 ].map((theme) => (
                   <button
                     key={theme.value}
@@ -321,7 +347,7 @@ export default function Settings() {
               <Select
                 value={preferences.defaultView}
                 onValueChange={(value) => 
-                  setPreferences({ ...preferences, defaultView: value })
+                  setPreferences({ ...preferences, defaultView: value as 'dashboard' | 'pipeline' })
                 }
               >
                 <SelectTrigger className="w-full max-w-xs">
@@ -330,7 +356,6 @@ export default function Settings() {
                 <SelectContent className="bg-popover">
                   <SelectItem value="dashboard">Dashboard</SelectItem>
                   <SelectItem value="pipeline">Pipeline</SelectItem>
-                  <SelectItem value="applications">Applications</SelectItem>
                 </SelectContent>
               </Select>
             </CardContent>
@@ -412,6 +437,8 @@ export default function Settings() {
           )}
         </Button>
       </div>
+      </>
+      )}
     </div>
   );
 }
