@@ -102,16 +102,18 @@ export class ApplicationService {
       throw new BadRequestError('Interview date cannot be in the past');
     }
 
-    const updateData: Partial<IApplication> = { ...updates };
+    // Create update data with proper type handling for dates
+    const { appliedDate, deadline, nextInterviewDate, ...otherUpdates } = updates;
+    const updateData: Partial<IApplication> = { ...otherUpdates };
 
-    if (updates.appliedDate) {
-      updateData.appliedDate = new Date(updates.appliedDate);
+    if (appliedDate) {
+      updateData.appliedDate = new Date(appliedDate);
     }
-    if (updates.deadline) {
-      updateData.deadline = new Date(updates.deadline);
+    if (deadline) {
+      updateData.deadline = new Date(deadline);
     }
-    if (updates.nextInterviewDate) {
-      updateData.nextInterviewDate = new Date(updates.nextInterviewDate);
+    if (nextInterviewDate) {
+      updateData.nextInterviewDate = new Date(nextInterviewDate);
     }
 
     return this.applicationRepository.updateById(id, userId, updateData);

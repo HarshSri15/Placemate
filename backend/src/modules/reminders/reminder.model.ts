@@ -61,7 +61,7 @@ const reminderSchema = new Schema<IReminder>(
   {
     timestamps: true,
     toJSON: {
-      transform: (doc, ret) => {
+      transform: (_doc: any, ret: any) => {
         ret.id = ret._id.toString();
         ret.userId = ret.userId.toString();
         if (ret.applicationId) {

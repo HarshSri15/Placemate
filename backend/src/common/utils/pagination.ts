@@ -19,7 +19,7 @@ export const getPagination = (options: PaginationOptions): PaginationResult => {
   
   const sortBy = options.sortBy || 'createdAt';
   const sortOrder = options.sortOrder === 'asc' ? 1 : -1;
-  const sort = { [sortBy]: sortOrder };
+  const sort: Record<string, 1 | -1> = { [sortBy]: sortOrder };
   
   return {
     skip,

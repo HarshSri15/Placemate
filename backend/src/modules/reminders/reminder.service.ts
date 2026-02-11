@@ -80,21 +80,23 @@ export class ReminderService {
     userId: string,
     updates: UpdateReminderInput
   ): Promise<IReminder> {
-    const updateData: Partial<IReminder> = { ...updates };
+    // Extract fields with special type handling
+    const { reminderDate, applicationId, ...otherUpdates } = updates;
+    const updateData: Partial<IReminder> = { ...otherUpdates };
 
-    if (updates.reminderDate) {
-      const reminderDate = new Date(updates.reminderDate);
+    if (reminderDate) {
+      const reminderDateObj = new Date(reminderDate);
       
       // Only validate future date if not marking as completed
-      if (!updates.isCompleted && reminderDate < new Date()) {
+      if (!updates.isCompleted && reminderDateObj < new Date()) {
         throw new BadRequestError('Reminder date must be in the future');
       }
       
-      updateData.reminderDate = reminderDate;
+      updateData.reminderDate = reminderDateObj;
     }
 
-    if (updates.applicationId) {
-      updateData.applicationId = updates.applicationId as any;
+    if (applicationId) {
+      updateData.applicationId = applicationId as any;
     }
 
     return this.reminderRepository.updateById(id, userId, updateData);
