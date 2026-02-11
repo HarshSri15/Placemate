@@ -1,4 +1,6 @@
+# ===============================
 # Build stage
+# ===============================
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -6,8 +8,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# ✅ install ALL deps (typescript needed for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -15,7 +17,11 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
+
+
+# ===============================
 # Production stage
+# ===============================
 FROM node:18-alpine
 
 WORKDIR /app
@@ -24,10 +30,14 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy built files and dependencies from builder
+# Copy package files
+COPY package*.json ./
+
+# ✅ only production deps here (smaller image)
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy built files only
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 
 # Create logs directory
 RUN mkdir -p logs && chown nodejs:nodejs logs
@@ -35,7 +45,6 @@ RUN mkdir -p logs && chown nodejs:nodejs logs
 # Switch to non-root user
 USER nodejs
 
-# Expose port
 EXPOSE 5000
 
 # Health check
