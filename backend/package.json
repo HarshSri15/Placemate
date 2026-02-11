@@ -11,6 +11,7 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
+    "module-alias": "^2.2.2",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -22,6 +23,13 @@
     "mongoose": "^8.3.0",
     "winston": "^3.13.0",
     "zod": "^3.23.6"
+  },
+  "_moduleAliases": {
+    "@": "dist",
+    "@config": "dist/config",
+    "@modules": "dist/modules",
+    "@middleware": "dist/middleware",
+    "@common": "dist/common"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

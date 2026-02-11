@@ -1,3 +1,4 @@
+import 'module-alias/register';
 import { createApp } from './app';
 import { database } from './config/database.config';
 import { config } from './config/env.config';
