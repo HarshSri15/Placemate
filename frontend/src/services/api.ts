@@ -1,6 +1,6 @@
 import { Application, User, DashboardStats, AnalyticsData, ApplicationStage } from '@/types/application';
 
-const API_BASE = 'http://localhost:5000/v1';
+const API_BASE = '/v1';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -15,6 +15,7 @@ interface ApiResponse<T> {
 }
 
 class ApiClient {
+  private refreshing: Promise<void> | null = null;
   private getToken(): string | null {
     return localStorage.getItem('accessToken');
   }
@@ -23,16 +24,56 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    console.debug('[api] request', endpoint, options.method || 'GET');
+    // Build headers and include credentials so refresh cookie is sent
     const token = this.getToken();
-    
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const baseHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> || {}),
+    };
+    if (token) baseHeaders['Authorization'] = `Bearer ${token}`;
+
+    const fetchOptions: RequestInit = {
+      credentials: 'include',
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
-    });
+      headers: baseHeaders,
+    };
+
+    console.debug('[api] fetch options', fetchOptions);
+    let response = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+    console.debug('[api] fetch response', endpoint, response.status);
+
+    // If access token expired, try refresh once and retry the original request
+    if (response.status === 401) {
+      console.warn('[api] access token expired (401) for', endpoint);
+      try {
+        if (!this.refreshing) {
+          console.debug('[api] starting refresh');
+          this.refreshing = this.performRefresh();
+        }
+        await this.refreshing;
+
+        console.debug('[api] refresh completed, retrying', endpoint);
+
+        // Retry original request with new token
+        const newToken = this.getToken();
+        if (newToken) {
+          fetchOptions.headers = {
+            ...(fetchOptions.headers as Record<string, string>),
+            Authorization: `Bearer ${newToken}`,
+          };
+        }
+
+        response = await fetch(`${API_BASE}${endpoint}`, fetchOptions);
+      } catch (err) {
+        // Refresh failed — remove token and surface auth error
+        localStorage.removeItem('accessToken');
+        console.error('[api] refresh failed', err);
+        throw new Error('Authentication required');
+      } finally {
+        this.refreshing = null;
+      }
+    }
 
     const data: ApiResponse<T> = await response.json();
 
@@ -85,13 +126,28 @@ class ApiClient {
     localStorage.removeItem('accessToken');
   }
 
+  private async performRefresh(): Promise<void> {
+    console.debug('[api] performRefresh called');
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const body = await res.json();
+    console.debug('[api] refresh response', res.status, body);
+    if (!res.ok) {
+      console.error('[api] refresh error', body);
+      throw new Error(body.message || 'Failed to refresh token');
+    }
+    // Response shape: { success, message, data: { accessToken } }
+    localStorage.setItem('accessToken', (body.data && body.data.accessToken) || '');
+  }
+
   async refreshToken(): Promise<{ accessToken: string }> {
-    const response = await this.request<{ accessToken: string }>(
-      '/auth/refresh',
-      { method: 'POST' }
-    );
-    localStorage.setItem('accessToken', response.accessToken);
-    return response;
+    await this.performRefresh();
+    const token = this.getToken();
+    if (!token) throw new Error('Refresh failed');
+    return { accessToken: token };
   }
 
   async getCurrentUser(): Promise<User> {

@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ThemeProvider } from "@/hooks/use-theme";
 
@@ -23,6 +24,32 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function AppBootstrap() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const checkAuth = async () => {
+    // If there's an access token, try to validate or refresh and navigate to dashboard
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+    try {
+      // Try fetching current user (will trigger refresh flow on 401)
+      await (await import('./services/api')).api.getCurrentUser();
+      if (location.pathname === '/') navigate('/dashboard');
+    } catch (err) {
+      // If refresh succeeded the above would pass; otherwise clear token
+      localStorage.removeItem('accessToken');
+    }
+  };
+
+  // Run once on app load within router context
+  useEffect(() => {
+    checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -30,6 +57,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <AppBootstrap />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
